@@ -181,7 +181,7 @@ Camera:
   far clip plane: 1000
   field of view: 60
   orthographic: 1
-  orthographic size: 200
+  orthographic size: 38
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
@@ -206,7 +206,7 @@ Transform:
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -170.5307, y: 22.499464, z: -10}
+  m_LocalPosition: {x: 32, y: 32, z: -10}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -616,25 +616,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6dfed9984f01aac4996f251ce7f83e2c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  width: 64
-  height: 64
-  fieldLayers: 1
-  particleSize: 1
-  springRestDistance: 0.81
-  iterations: 5
-  speed: 700
-  angle: 0
-  density: 1.3
-  recession: 36.4
-  springConstants:
-  - 247
-  dampingValues:
-  - 1
-  thresholds:
-  - 1
-  transferRates:
-  - 0.3
-  invertTransfers: 00
+  width: 512
+  height: 512
+  particleSize: 0.12
+  density: 0.1
+  iterations: 1
+  damping: 0.0016
+  layers:
+  - baseSemiMajorAxis: 8.96
+    baseEccentricity: 0.869
+    precessionalSpeed: -13.9
+    siderealSpeed: 15.18
+    iterations: 9
   computeShader: {fileID: 7200000, guid: 7e6bf500161f4d559c1e10d0a6f53e7e, type: 3}
   particleMaterial: {fileID: 2100000, guid: 7455a7f18929e1547ba964890d705559, type: 2}
   particleMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}

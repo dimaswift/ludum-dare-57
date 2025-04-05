@@ -25,10 +25,10 @@ Shader "ConsequenceCascade/Particle"
                 fixed4 color : COLOR;
             };
             struct FieldCell {  
-                float2 position;      // Displacement from rest position  
-                float2 velocity;      // Current velocity  
-                float energy;         // Energy level for threshold checks  
-                float2 force;         // Accumulated force  
+                float2 position;
+                float2 previousPosition;
+                float siderealTime;
+                float precessionalTime;
             };
             
             StructuredBuffer<FieldCell> Particles;
@@ -37,17 +37,18 @@ Shader "ConsequenceCascade/Particle"
             v2f vert(appdata_t i, uint instanceID : SV_InstanceID)
             {
                 v2f o;
-                const FieldCell p = Particles[instanceID];
+                const FieldCell cell = Particles[instanceID];
                 float s = Size;
                 float4x4 translationMatrix = float4x4(
-                    s, 0, 0, p.position.x,
-                    0, s, 0, p.position.y,
+                    s, 0, 0, cell.position.x,
+                    0, s, 0, cell.position.y,
                     0, 0, s, 0,
                     0, 0, 0, 1
                 );
+                float vel = length(cell.previousPosition - cell.position);
                 float4 pos = mul(translationMatrix, i.vertex);
                 o.vertex = UnityObjectToClipPos(pos);
-                o.color = float4(p.force.y, p.force.y, 1, 1);
+                o.color = float4(vel, 1, 1, 1);
                 
                 return o;
             }

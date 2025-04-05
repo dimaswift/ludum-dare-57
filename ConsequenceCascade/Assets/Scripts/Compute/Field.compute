@@ -1,83 +1,67 @@
-// Each #kernel tells which function to compile; you can have many kernels  
 #pragma kernel InitializeField  
 #pragma kernel UpdateField  
-#pragma kernel TransferEnergy  
-#pragma kernel DisturbField
 
-// Field cell data structure  
+#define PI 3.1415926
+
 struct FieldCell {  
-    float2 position;      // Displacement from rest position  
-    float2 velocity;      // Current velocity  
-    float energy;         // Energy level for threshold checks  
-    float2 force;         // Accumulated force  
+    float2 position;
+    float2 previousPosition;
+    float siderealTime;
+    float precessionalTime;
 };
 
-// Field parameters (customizable per layer)  
-float springConstant;  
-float damping;  
-float threshold;          // Breaking point threshold  
-float energyTransferRate; // How much energy transfers to next layer  
-bool invertOnTransfer;    // Whether to invert forces when transferring  
-float deltaTime;  
+float deltaTime;
+float damping;
 int width;  
 int height;
-float2 disturbPosition;  
-float disturbStrength;  
-float disturbRadius;  
-float springRestDistance;
-float speed;
-float PI = 3.1415926;
-int iterations;
-float angle;
-float recession;
 float density;
-// Buffers  
-RWStructuredBuffer<FieldCell> currentField;  
-RWStructuredBuffer<FieldCell> nextField;  
 
-// Initialize field to default values  
+float baseSemiMajorAxis;
+float baseEccentricity;
+float precessionalSpeed;
+float siderealSpeed;
+int iterations;
+
+RWStructuredBuffer<FieldCell> currentField;  
+
 [numthreads(8,8,1)]  
 void InitializeField(uint3 id : SV_DispatchThreadID) {  
-    // Check if within bounds  
     if (id.x >= (uint)width || id.y >= (uint)height) return;  
     
-    uint index = id.y * width + id.x;  
-    
-    // Initialize to rest state  
+    const uint index = id.y * width + id.x;  
+
     FieldCell cell;  
     cell.position = float2(0, 0);  
-    cell.velocity = float2(id.x, id.y);  
-    cell.energy = 0;  
-    cell.force = float2(0, 0);  
+    cell.siderealTime = 0;
+    cell.precessionalTime = 0;
+    cell.previousPosition = cell.position;
     currentField[index] = cell;  
 }
 
 
-float2 calculateEllipticOrbit(float semiMajorAxis, float eccentricity, float timeParameter,   
-                                     float2 centerPosition, float rotationAngle)  
+float2 calculateEllipticOrbit(float axis, float timeParameter, float2 centerPosition, float rotationAngle)  
 {  
     // Ensure eccentricity is valid  
-    //eccentricity = clamp(eccentricity, 0.0, 0.99);  
+    baseEccentricity = clamp(baseEccentricity * baseEccentricity, 0.0, 0.9999);  
     
     // Semi-minor axis  
-    float semiMinorAxis = semiMajorAxis * sqrt(1.0 - eccentricity * eccentricity);  
+    const float semiMinorAxis = axis * sqrt(1.0 - baseEccentricity * baseEccentricity);  
     
     // Calculate mean anomaly (0-2π)  
     float meanAnomaly = timeParameter * 2.0 * 3.14159265;  
     
     // Solve Kepler's equation to get eccentric anomaly  
     // M = E - e * sin(E)  
-    // Using a simpler approximation for the compute shader  
+    // Using a simpler approximation
     float E = meanAnomaly;  
     
     // Newton-Raphson iterations (can adjust number of iterations for accuracy vs. performance)  
-    for (int i = 0; i < iterations; i++)  
+    for (int i = 0; i < 5; i++)  
     {  
-        E = E - (E - eccentricity * sin(E) - meanAnomaly) / (1.0 - eccentricity * cos(E));  
+        E = E - (E - baseEccentricity * sin(E) - meanAnomaly) / (1.0 - baseEccentricity * cos(E));  
     }  
-    
-    // Calculate position in orbit  
-    float xPos = semiMajorAxis * (cos(E) - eccentricity);  
+
+    float xPos = axis * (cos(E) - baseEccentricity);  
     float yPos = semiMinorAxis * sin(E);  
     
     // Apply rotation  
@@ -95,61 +79,19 @@ float2 calculateEllipticOrbit(float semiMajorAxis, float eccentricity, float tim
     return float2(xPos + centerPosition.x, yPos + centerPosition.y);  
 }  
 
-// Update field physics  
 [numthreads(8,8,1)]  
 void UpdateField(uint3 id : SV_DispatchThreadID) {  
-    // Check if within bounds  
-    if (id.x >= (uint)width || id.y >= (uint)height) return;  
-    //
-    uint index = id.y * width + id.x;  
+    if (id.x >= (uint)width || id.y >= (uint)height) return;
+    
+    const uint index = id.y * width + id.x;  
     FieldCell cell = currentField[index];
-    // FieldCell prev = currentField[index - 1];
-    // if(index == 0)
-    // {
-    //     prev = currentField[( (uint)width * (uint)height) - 1];
-    // }
-    float dist = length(float2(height / 2, width / 2) - float2(id.x,id.y));
-
-    float2 prevPos = cell.position;
-    
-    cell.position = calculateEllipticOrbit(springConstant, springRestDistance, cell.energy, cell.velocity / density, cell.force.x);
-    
-    cell.energy += deltaTime * speed * (dist * dist);
-    cell.force.x += deltaTime * angle / (dist);
-    cell.force.y = length(cell.position - prevPos);
-    // float t = 10000;
-    // if(cell.energy > t)
-    // {
-    //     cell.energy -= t;
-    // }
-    // if(cell.force.x > t)
-    // {
-    //     cell.force.x -= t;
-    // }
-  //  cell.force.y += deltaTime * recession / (dist * dist);
-    //cell.velocity += cell.position / 1000;
+    const float2 gridPoint = float2(id.x, id.y);
+   
+    const float distanceToSun = length(float2((float)height * 0.5, (float)width * 0.5) - gridPoint);
+    cell.previousPosition = cell.position;
+    cell.position = calculateEllipticOrbit(baseSemiMajorAxis * distanceToSun, cell.siderealTime, gridPoint * density, cell.precessionalTime);
+    cell.siderealTime += (deltaTime * siderealSpeed / (distanceToSun)) * damping;
+    cell.precessionalTime += (deltaTime * precessionalSpeed * distanceToSun) * damping;
+  
     currentField[index] = cell;  
-}  
-
-// Handle energy transfer between field layers  
-[numthreads(8,8,1)]  
-void TransferEnergy(uint3 id : SV_DispatchThreadID) {  
-
-}
-
-[numthreads(8,8,1)]  
-void DisturbField(uint3 id : SV_DispatchThreadID) {  
-    if (id.x >= (uint)width || id.y >= (uint)height) return;  
-    
-    uint index = id.y * width + id.x;  
-    FieldCell cell = currentField[index];  
-
-    float distance = length(currentField[index].position - disturbPosition);  
-
-    if (distance < disturbRadius) {  
-        float factor = (1.0 - distance / disturbRadius) * disturbStrength;  
-        cell.velocity += (disturbPosition - currentField[index].position) * disturbStrength;
-    }  
-    
-    currentField[index] = cell;  
-}  
+} 
