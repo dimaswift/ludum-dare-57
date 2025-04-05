@@ -28,7 +28,9 @@ float springRestDistance;
 float speed;
 float PI = 3.1415926;
 int iterations;
-
+float angle;
+float recession;
+float density;
 // Buffers  
 RWStructuredBuffer<FieldCell> currentField;  
 RWStructuredBuffer<FieldCell> nextField;  
@@ -43,11 +45,10 @@ void InitializeField(uint3 id : SV_DispatchThreadID) {
     
     // Initialize to rest state  
     FieldCell cell;  
-    cell.position = float2(id.x, id.y);  
-    cell.velocity = float2(0, 0);  
+    cell.position = float2(0, 0);  
+    cell.velocity = float2(id.x, id.y);  
     cell.energy = 0;  
     cell.force = float2(0, 0);  
-    
     currentField[index] = cell;  
 }
 
@@ -56,7 +57,7 @@ float2 calculateEllipticOrbit(float semiMajorAxis, float eccentricity, float tim
                                      float2 centerPosition, float rotationAngle)  
 {  
     // Ensure eccentricity is valid  
-    eccentricity = clamp(eccentricity, 0.0, 0.99);  
+    //eccentricity = clamp(eccentricity, 0.0, 0.99);  
     
     // Semi-minor axis  
     float semiMinorAxis = semiMajorAxis * sqrt(1.0 - eccentricity * eccentricity);  
@@ -102,10 +103,31 @@ void UpdateField(uint3 id : SV_DispatchThreadID) {
     //
     uint index = id.y * width + id.x;  
     FieldCell cell = currentField[index];
+    FieldCell prev = currentField[index - 1];
+    if(index == 0)
+    {
+        prev = currentField[( (uint)width * (uint)height) - 1];
+    }
+    float dist = length(float2(height / 2, width / 2) - float2(prev.position.x,prev.position.y));
 
-    cell.position = calculateEllipticOrbit(springConstant, springRestDistance, cell.energy, float2(id.x, id.y), 0);
-    float dist = length(float2(height / 2, width / 2) - float2(id.x,id.y));
-    cell.energy += deltaTime * speed / (dist * dist);
+    
+    
+    cell.position = calculateEllipticOrbit(springConstant, springRestDistance, cell.energy, cell.velocity / density, cell.force.x);
+    
+    cell.energy += deltaTime * speed / (dist);
+    cell.force.x += deltaTime * angle / (dist * dist);
+    cell.force.y += deltaTime * recession / (dist * dist);
+    // float t = 10000;
+    // if(cell.energy > t)
+    // {
+    //     cell.energy -= t;
+    // }
+    // if(cell.force.x > t)
+    // {
+    //     cell.force.x -= t;
+    // }
+  //  cell.force.y += deltaTime * recession / (dist * dist);
+    //cell.velocity += cell.position / 1000;
     currentField[index] = cell;  
 }  
 

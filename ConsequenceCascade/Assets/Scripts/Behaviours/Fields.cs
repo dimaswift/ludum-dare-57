@@ -22,11 +22,14 @@ namespace ConsequenceCascade.Behaviours
         public int fieldLayers = 3;
 
         [Header("Simulation Parameters")]
-        [Range(0.01f, 2f)] public float springRestDistance = 1;
+        [Range(0.01f, 5f)] public float springRestDistance = 1;
 
         public int iterations = 5;
-        [Range(0f, 1f)] public float speed = 1;
-        [Range(0.1f, 100f)] public float[] springConstants = new float[3] { 1f, 2f, 3f };  
+        public float speed = 1;
+        public float angle = 1;
+        public float density = 1;
+        public float recession = 1;
+        [Range(0.1f, 1000f)] public float[] springConstants = new float[3] { 1f, 2f, 3f };  
         [Range(0.01f, 1f)] public float[] dampingValues = new float[3] { 0.1f, 0.2f, 0.3f };  
         [Range(0.1f, 10f)] public float[] thresholds = new float[3] { 1f, 2f, 3f };  
         [Range(0.1f, 1f)] public float[] transferRates = new float[3] { 0.3f, 0.3f, 0.3f };  
@@ -62,15 +65,16 @@ namespace ConsequenceCascade.Behaviours
             public Vector2 position;  
             public Vector2 velocity;  
             public float energy;  
-            public Vector2 force;  
-            
+            public Vector2 force;
+
             // Default constructor  
             public FieldCell(Vector2 pos, Vector2 vel, float en, Vector2 f)  
             {  
                 position = pos;  
                 velocity = vel;  
                 energy = en;  
-                force = f;  
+                force = f;
+
             }  
         }  
         
@@ -240,6 +244,9 @@ namespace ConsequenceCascade.Behaviours
             computeShader.SetInt("height", height);  
             computeShader.SetFloat("springRestDistance", springRestDistance);
             computeShader.SetFloat("speed", speed);
+            computeShader.SetFloat("angle", angle);
+            computeShader.SetFloat("density", density);
+            computeShader.SetFloat("recession", recession);
             computeShader.SetInt("iterations", iterations);  
         }  
         

@@ -38,7 +38,7 @@ Shader "ConsequenceCascade/Particle"
             {
                 v2f o;
                 const FieldCell p = Particles[instanceID];
-                float s = 1;
+                float s = 0.5;
                 float4x4 translationMatrix = float4x4(
                     s, 0, 0, p.position.x,
                     0, s, 0, p.position.y,
@@ -47,7 +47,7 @@ Shader "ConsequenceCascade/Particle"
                 );
                 float4 pos = mul(translationMatrix, i.vertex);
                 o.vertex = UnityObjectToClipPos(pos);
-                o.color = float4(p.energy, 1, 0, 1);
+                o.color = float4(1, 1, 1, 1);
                 
                 return o;
             }

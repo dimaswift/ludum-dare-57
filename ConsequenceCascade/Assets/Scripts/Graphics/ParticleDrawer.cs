@@ -26,7 +26,7 @@ namespace ConsequenceCascade.Graphics
         public void Draw()
         {
             UnityEngine.Graphics.DrawMeshInstancedIndirect(mesh, 0, material,
-                new Bounds(Vector3.zero, Vector3.one * 1000), meshBuffer);
+                new Bounds(Vector3.zero, Vector3.one * 100000), meshBuffer);
         }
     }
 }

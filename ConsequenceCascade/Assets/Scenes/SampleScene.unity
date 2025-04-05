@@ -473,14 +473,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6dfed9984f01aac4996f251ce7f83e2c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  width: 32
-  height: 32
+  width: 512
+  height: 512
   fieldLayers: 1
-  springRestDistance: 0.428
+  springRestDistance: 0.81
   iterations: 5
-  speed: 1
+  speed: 7000
+  angle: 3000
+  density: 1.3
+  recession: 36.4
   springConstants:
-  - 100
+  - 2
   dampingValues:
   - 1
   thresholds:
@@ -490,7 +493,7 @@ MonoBehaviour:
   invertTransfers: 00
   computeShader: {fileID: 7200000, guid: 7e6bf500161f4d559c1e10d0a6f53e7e, type: 3}
   particleMaterial: {fileID: 2100000, guid: 7455a7f18929e1547ba964890d705559, type: 2}
-  particleMesh: {fileID: 10207, guid: 0000000000000000e000000000000000, type: 0}
+  particleMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
   pauseSimulation: 0
 --- !u!4 &1507005783
 Transform:
