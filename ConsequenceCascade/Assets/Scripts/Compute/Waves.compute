@@ -1,0 +1,232 @@
+// Keplerian Wave Cellular Automata Compute Shader  
+#pragma kernel CellularWave
+#pragma kernel SwapBuffers
+#pragma kernel InitializeWave
+
+// State buffers  
+RWTexture2D<float4> CurrentState : register(u0);  // RGB: amplitude, phase, energy; A: time dilation factor  
+RWTexture2D<float4> NextState : register(u1);     // Same format as CurrentState  
+RWTexture2D<float4> Visualization : register(u2); // Final visualization output  
+
+// Simulation parameters  
+cbuffer SimulationParams : register(b0) {  
+    float deltaTime;           // Time step  
+    float damping;             // Damping factor (0-1)  
+    float keplerianFactor;     // Strength of time dilation effect  
+    float propagationSpeed;    // Base wave propagation speed  
+    float time;                // Current simulation time  
+    uint width;                // Simulation width  
+    uint height;               // Simulation height  
+    float2 centerPoint;        // Center point for Keplerian effect  
+    uint updateMode;           // 0=standard, 1=quantum-inspired, 2=experimental   
+    float quantumFactor;       // Strength of quantum-like behavior  
+    float energyThreshold;     // Minimum energy for update  
+    uint frameCount;           // Frame counter for probabilistic updates  
+    float randomSeed;          // Seed for pseudo-random generator  
+}  
+
+// Random number generator for cellular automata  
+float rand(float2 co) {  
+    return frac(sin(dot(co, float2(12.9898, 78.233)) + randomSeed) * 43758.5453);  
+}  
+
+// Pseudo-random number based on position and frame  
+float cellRandom(uint2 pos, uint frame) {  
+    return frac(sin(dot(float2(pos) + float2(frame, frame * 0.7), float2(12.9898, 78.233))) * 43758.5453);  
+}  
+
+// Main simulation kernel  
+[numthreads(8, 8, 1)]  
+void CellularWave(uint3 id : SV_DispatchThreadID)  
+{  
+    // Boundary check  
+    if (id.x >= width || id.y >= height)  
+        return;  
+        
+    // Calculate distance from center for Keplerian effect  
+    float2 pos = float2(id.xy);  
+    float2 relPos = pos - centerPoint;  
+    float r = length(relPos);  
+    
+    // Keplerian time dilation factor (time runs slower as r increases)  
+    float timeDilation = 1.0 / (1.0 + keplerianFactor * r * r);  
+    
+    // Get current cell state  
+    float4 state = CurrentState[id.xy];  
+    float amplitude = state.r;      // Wave amplitude/height  
+    float phase = state.g;          // Wave phase  
+    float energy = state.b;         // Energy level  
+    
+    // Store time dilation factor for visualization  
+    state.a = timeDilation;  
+    
+    // Neighbors - handle boundaries by clamping  
+    float4 top = (id.y > 0) ? CurrentState[uint2(id.x, id.y - 1)] : state;  
+    float4 bottom = (id.y < height - 1) ? CurrentState[uint2(id.x, id.y + 1)] : state;  
+    float4 left = (id.x > 0) ? CurrentState[uint2(id.x - 1, id.y)] : state;  
+    float4 right = (id.x < width - 1) ? CurrentState[uint2(id.x + 1, id.y)] : state;  
+    
+    // For diagonal neighbors (used in some rules)  
+    float4 topLeft = (id.y > 0 && id.x > 0) ? CurrentState[uint2(id.x - 1, id.y - 1)] : state;  
+    float4 topRight = (id.y > 0 && id.x < width - 1) ? CurrentState[uint2(id.x + 1, id.y - 1)] : state;  
+    float4 bottomLeft = (id.y < height - 1 && id.x > 0) ? CurrentState[uint2(id.x - 1, id.y + 1)] : state;  
+    float4 bottomRight = (id.y < height - 1 && id.x < width - 1) ? CurrentState[uint2(id.x + 1, id.y + 1)] : state;  
+    
+    // Average neighbor amplitude  
+    float avgNeighborAmplitude = (top.r + bottom.r + left.r + right.r) * 0.25;  
+    
+    // Expanded neighborhood for more wave-like behavior  
+    float extendedNeighborAvg = (top.r + bottom.r + left.r + right.r +   
+                               topLeft.r + topRight.r + bottomLeft.r + bottomRight.r) * 0.125;  
+    
+    // Calculate probability of update based on time dilation  
+    // (Key part that implements Keplerian time dilation in CA)  
+    float updateProbability = timeDilation;  
+    bool shouldUpdate = (cellRandom(id.xy, frameCount) < updateProbability);  
+    
+    // Only update if probability check passes (Keplerian effect)  
+    if (shouldUpdate) {  
+        // Different CA update rules based on mode  
+        float newAmplitude = amplitude;  
+        float newPhase = phase;  
+        float newEnergy = energy;  
+        
+        // Standard wave CA rule with time dilation  
+        if (updateMode == 0) {  
+            // Basic wave rule: new amplitude affected by neighbors and previous state  
+            // with built-in damping  
+            newAmplitude = avgNeighborAmplitude * (1.0 - damping * timeDilation);  
+            
+            // Phase propagation  
+            newPhase = phase + propagationSpeed * timeDilation * deltaTime;  
+            
+            // Energy dissipation  
+            newEnergy = energy * (1.0 - 0.01 * timeDilation);  
+        }  
+        // Quantum-inspired mode  
+        else if (updateMode == 1) {  
+            // Quantum-like behavior: more complex interaction between amplitude and phase  
+            float phaseGradient = (top.g - bottom.g) * (right.g - left.g);  
+            
+            // Non-linear response creating nodal patterns  
+            newAmplitude = avgNeighborAmplitude;  
+            if (abs(newAmplitude) > 0) {  
+                newAmplitude *= (1.0 + quantumFactor * sin(phase * 6.0));  
+            }  
+            
+            // Interference-enhancing phase update  
+            newPhase = phase + propagationSpeed * timeDilation * deltaTime;  
+            
+            // Energy tends to concentrate at certain radii from center  
+            float resonanceRadius = sin(r * 0.2) * sin(r * 0.21 + time * 0.1);  
+            newEnergy = energy + 0.01 * abs(resonanceRadius) * timeDilation;  
+        }  
+        // Experimental orbital mode (creates standing wave patterns)  
+        else if (updateMode == 2) {  
+            // Direction from center  
+            float2 direction = normalize(relPos + float2(0.001, 0.001));  
+            
+            // Tangential component (perpendicular to radius)  
+            float2 tangent = float2(-direction.y, direction.x);  
+            
+            // Sample in tangential direction to create circular patterns  
+            float2 tangentOffset = tangent * 1.0;  
+            uint2 tangentPos1 = uint2(clamp(id.xy + tangentOffset, uint2(0, 0), uint2(width-1, height-1)));  
+            uint2 tangentPos2 = uint2(clamp(id.xy - tangentOffset, uint2(0, 0), uint2(width-1, height-1)));  
+            
+            float tangentialAvg = (CurrentState[tangentPos1].r + CurrentState[tangentPos2].r) * 0.5;  
+            
+            // Create orbital standing waves  
+            newAmplitude = lerp(avgNeighborAmplitude, tangentialAvg, 0.5) * (1.0 - damping * timeDilation);  
+            
+            // Phase evolution with radius-dependent frequency (like orbital periods)  
+            float orbitalPeriod = pow(r, 1.5) + 0.01; // Kepler's Third Law-inspired  
+            newPhase = phase + (6.28 / orbitalPeriod) * timeDilation * deltaTime;  
+            
+            // Energy decays slower in orbital "sweet spots"  
+            float orbitalResonance = abs(sin(r * 3.14159));  
+            newEnergy = energy * (1.0 - 0.01 * (1.0 - orbitalResonance) * timeDilation);  
+        }  
+        
+        // Source: add energy at center  
+        if (r < 5.0) {  
+            newEnergy += 0.1 * (5.0 - r) * sin(time * 5.0) * sin(time * 5.0);  
+            newAmplitude += 0.05 * sin(time * 10.0) * (5.0 - r) / 5.0;  
+        }  
+        
+        // Apply energy threshold - below threshold, amplitude decays faster  
+        if (newEnergy < energyThreshold) {  
+            newAmplitude *= 0.9;  
+        }  
+        
+        // Clamp values for stability  
+        newAmplitude = clamp(newAmplitude, -1.0, 1.0);  
+        newPhase = fmod(newPhase, 6.28318);  
+        newEnergy = clamp(newEnergy, 0.0, 1.0);  
+        
+        // Store new state  
+        NextState[id.xy] = float4(newAmplitude, newPhase, newEnergy, timeDilation);  
+    }  
+    else {  
+        // If not updating due to time dilation, just copy current state  
+        NextState[id.xy] = state;  
+    }  
+    
+    // Always update visualization (regardless of time dilation)  
+    // Visualization uses amplitude, phase, and time dilation  
+    float3 color;  
+    
+    // Base color from amplitude (blue to red)  
+    if (amplitude > 0) {  
+        color = lerp(float3(1, 1, 1), float3(1, 0, 0), saturate(amplitude * 2.0));  
+    } else {  
+        color = lerp(float3(1, 1, 1), float3(0, 0, 1), saturate(-amplitude * 2.0));  
+    }  
+    
+    // Modulate with phase for more dynamic visualization  
+    float phaseFactor = (sin(phase) * 0.5 + 0.5);  
+    color = lerp(color, color * float3(phaseFactor, phaseFactor, 1), 0.3);  
+    
+    // Add energy glow (green channel)  
+    color.g += energy * 0.5;  
+    
+    // Visualize time dilation as brightness  
+    color *= (0.7 + 0.3 * timeDilation);  
+    
+    Visualization[id.xy] = float4(color, 1.0);  
+}  
+
+// Buffer swap kernel  
+[numthreads(8, 8, 1)]  
+void SwapBuffers(uint3 id : SV_DispatchThreadID)  
+{  
+    if (id.x >= width || id.y >= height)  
+        return;  
+        
+    // Copy next state to current state  
+    CurrentState[id.xy] = NextState[id.xy];  
+}  
+
+// Initialize wave kernel (called once at start)  
+[numthreads(8, 8, 1)]  
+void InitializeWave(uint3 id : SV_DispatchThreadID)  
+{  
+    if (id.x >= width || id.y >= height)  
+        return;  
+        
+    // Clear to zero  
+    CurrentState[id.xy] = float4(0, 0, 0, 0);  
+    NextState[id.xy] = float4(0, 0, 0, 0);  
+    
+    // Add initial conditions  
+    float2 pos = float2(id.xy);  
+    float2 relPos = pos - centerPoint;  
+    float r = length(relPos);  
+    
+    // Optional: Add initial disturbance  
+    if (r < 10.0) {  
+        float initialAmplitude = 0.5 * (1.0 - r/10.0);  
+        CurrentState[id.xy] = float4(initialAmplitude, 0, 1.0, 0);  
+        NextState[id.xy] = float4(initialAmplitude, 0, 1.0, 0);  
+    }  
+}  

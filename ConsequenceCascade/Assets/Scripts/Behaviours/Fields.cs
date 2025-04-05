@@ -20,7 +20,7 @@ namespace ConsequenceCascade.Behaviours
         public int width = 256;  
         public int height = 256;  
         public int fieldLayers = 3;
-
+        public float particleSize = 1;
         [Header("Simulation Parameters")]
         [Range(0.01f, 5f)] public float springRestDistance = 1;
 
@@ -223,6 +223,7 @@ namespace ConsequenceCascade.Behaviours
             // For each field layer, update instance data and render  
             for (int i = 0; i < fieldLayers; i++)  
             {  
+                drawers[i].SetSize(particleSize);
                drawers[i].Draw();
             }  
         }  

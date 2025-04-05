@@ -33,12 +33,12 @@ Shader "ConsequenceCascade/Particle"
             
             StructuredBuffer<FieldCell> Particles;
             float Time;
-            
+            float Size;
             v2f vert(appdata_t i, uint instanceID : SV_InstanceID)
             {
                 v2f o;
                 const FieldCell p = Particles[instanceID];
-                float s = 0.5;
+                float s = Size;
                 float4x4 translationMatrix = float4x4(
                     s, 0, 0, p.position.x,
                     0, s, 0, p.position.y,
@@ -47,7 +47,7 @@ Shader "ConsequenceCascade/Particle"
                 );
                 float4 pos = mul(translationMatrix, i.vertex);
                 o.vertex = UnityObjectToClipPos(pos);
-                o.color = float4(1, 1, 1, 1);
+                o.color = float4(p.force.y, p.force.y, 1, 1);
                 
                 return o;
             }

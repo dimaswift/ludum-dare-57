@@ -28,5 +28,11 @@ namespace ConsequenceCascade.Graphics
             UnityEngine.Graphics.DrawMeshInstancedIndirect(mesh, 0, material,
                 new Bounds(Vector3.zero, Vector3.one * 100000), meshBuffer);
         }
+
+        public void SetSize(float size)
+        {
+            material.SetFloat("Size", size);
+        }
+
     }
 }

@@ -103,20 +103,20 @@ void UpdateField(uint3 id : SV_DispatchThreadID) {
     //
     uint index = id.y * width + id.x;  
     FieldCell cell = currentField[index];
-    FieldCell prev = currentField[index - 1];
-    if(index == 0)
-    {
-        prev = currentField[( (uint)width * (uint)height) - 1];
-    }
-    float dist = length(float2(height / 2, width / 2) - float2(prev.position.x,prev.position.y));
+    // FieldCell prev = currentField[index - 1];
+    // if(index == 0)
+    // {
+    //     prev = currentField[( (uint)width * (uint)height) - 1];
+    // }
+    float dist = length(float2(height / 2, width / 2) - float2(id.x,id.y));
 
-    
+    float2 prevPos = cell.position;
     
     cell.position = calculateEllipticOrbit(springConstant, springRestDistance, cell.energy, cell.velocity / density, cell.force.x);
     
-    cell.energy += deltaTime * speed / (dist);
-    cell.force.x += deltaTime * angle / (dist * dist);
-    cell.force.y += deltaTime * recession / (dist * dist);
+    cell.energy += deltaTime * speed * (dist * dist);
+    cell.force.x += deltaTime * angle / (dist);
+    cell.force.y = length(cell.position - prevPos);
     // float t = 10000;
     // if(cell.energy > t)
     // {
