@@ -2,8 +2,8 @@ Shader "ConsequenceCascade/Particle"
 {
     SubShader
     {
-        Tags { "Queue" = "Transparent" "RenderType" = "Opaque" }
-        //Blend One OneMinusSrcAlpha
+        Tags { "Queue" = "Transparent" "RenderType" = "Transparent" }
+        Blend One OneMinusSrcAlpha
         Pass
         {
             CGPROGRAM
@@ -29,6 +29,7 @@ Shader "ConsequenceCascade/Particle"
                 float2 previousPosition;
                 float siderealTime;
                 float precessionalTime;
+                float mass;
             };
             
             StructuredBuffer<FieldCell> Particles;
@@ -38,7 +39,7 @@ Shader "ConsequenceCascade/Particle"
             {
                 v2f o;
                 const FieldCell cell = Particles[instanceID];
-                float s = Size;
+                float s = Size * 0.01;
                 float4x4 translationMatrix = float4x4(
                     s, 0, 0, cell.position.x,
                     0, s, 0, cell.position.y,
@@ -48,7 +49,7 @@ Shader "ConsequenceCascade/Particle"
                 float vel = length(cell.previousPosition - cell.position);
                 float4 pos = mul(translationMatrix, i.vertex);
                 o.vertex = UnityObjectToClipPos(pos);
-                o.color = float4(vel, 1, 1, 1);
+                o.color = float4(cell.mass / 10, 1, 1, 0.1);
                 
                 return o;
             }

@@ -8,6 +8,15 @@ struct FieldCell {
     float2 previousPosition;
     float siderealTime;
     float precessionalTime;
+    float mass;
+};
+
+struct SpaceTime {  
+    float2 position;
+    float2 previousPosition;
+    float siderealTime;
+    float precessionalTime;
+    float mass;
 };
 
 float deltaTime;
@@ -21,8 +30,11 @@ float baseEccentricity;
 float precessionalSpeed;
 float siderealSpeed;
 int iterations;
+float siderealOffset;
+float precessionalOffset;
 
-RWStructuredBuffer<FieldCell> currentField;  
+RWStructuredBuffer<FieldCell> currentField;
+
 
 [numthreads(8,8,1)]  
 void InitializeField(uint3 id : SV_DispatchThreadID) {  
@@ -32,17 +44,18 @@ void InitializeField(uint3 id : SV_DispatchThreadID) {
 
     FieldCell cell;  
     cell.position = float2(0, 0);  
-    cell.siderealTime = 0;
-    cell.precessionalTime = 0;
+    cell.siderealTime = siderealOffset;
+    cell.precessionalTime = precessionalSpeed;
     cell.previousPosition = cell.position;
+    cell.mass = 0;
     currentField[index] = cell;  
 }
 
 
-float2 calculateEllipticOrbit(float axis, float timeParameter, float2 centerPosition, float rotationAngle)  
+float3 calculateEllipticOrbit(float axis, float timeParameter, float2 centerPosition, float rotationAngle)  
 {  
     // Ensure eccentricity is valid  
-    baseEccentricity = clamp(baseEccentricity * baseEccentricity, 0.0, 0.9999);  
+    //baseEccentricity = clamp(baseEccentricity * baseEccentricity, 0.0, 0.9999);  
     
     // Semi-minor axis  
     const float semiMinorAxis = axis * sqrt(1.0 - baseEccentricity * baseEccentricity);  
@@ -76,7 +89,7 @@ float2 calculateEllipticOrbit(float axis, float timeParameter, float2 centerPosi
     }  
     
     // Apply translation to center  
-    return float2(xPos + centerPosition.x, yPos + centerPosition.y);  
+    return float3(xPos, yPos, E);  
 }  
 
 [numthreads(8,8,1)]  
@@ -88,10 +101,13 @@ void UpdateField(uint3 id : SV_DispatchThreadID) {
     const float2 gridPoint = float2(id.x, id.y);
    
     const float distanceToSun = length(float2((float)height * 0.5, (float)width * 0.5) - gridPoint);
-    cell.previousPosition = cell.position;
-    cell.position = calculateEllipticOrbit(baseSemiMajorAxis * distanceToSun, cell.siderealTime, gridPoint * density, cell.precessionalTime);
+    float3 orbit = calculateEllipticOrbit(baseSemiMajorAxis, cell.siderealTime, gridPoint * density, cell.precessionalTime);
+    cell.position = gridPoint * density + float2(orbit.x, orbit.y);
     cell.siderealTime += (deltaTime * siderealSpeed / (distanceToSun)) * damping;
-    cell.precessionalTime += (deltaTime * precessionalSpeed * distanceToSun) * damping;
-  
+    cell.precessionalTime += (deltaTime * precessionalSpeed * (distanceToSun)) * damping;
+    
+    cell.previousPosition = cell.position;
+    
+    cell.mass = (orbit.z - (PI)) * 0.0001;
     currentField[index] = cell;  
-} 
+}

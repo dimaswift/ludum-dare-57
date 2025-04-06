@@ -8,8 +8,10 @@ namespace ConsequenceCascade.Behaviours
         [Header("Field Configuration")]  
         public int width = 256;  
         public int height = 256;
+        public float siderealOffset = 0;
+        public float precessionalOffset = 0;
+        [Range(0.0f, 0.01f)] public float density = 1f;
         public float particleSize = 1;
-        [Range(0.0f, 0.1f)] public float density = 1f;
         public int iterations = 1;
         [Range(0.0f, 0.1f)] public float damping = 0.1f;
         [Header("Simulation Parameters")]
@@ -42,13 +44,14 @@ namespace ConsequenceCascade.Behaviours
             public Vector2 previousPosition;
             public float siderealTime;
             public float precessionalTime;
+            public float mass;
         }  
         
         [System.Serializable]
         public class SimulationConfig
         {
             public float baseSemiMajorAxis;
-            [Range(0.001f, 1f)] public float baseEccentricity;
+            [Range(0.9f, 1.1f)] public float baseEccentricity;
             public float precessionalSpeed;
             public float siderealSpeed;
             public int iterations;
@@ -88,6 +91,16 @@ namespace ConsequenceCascade.Behaviours
               
             }  
             UpdateVisualization();
+
+            if (Input.GetKeyDown(KeyCode.R))
+            {
+                ResetAllFields();
+            }
+
+            if (Input.GetKeyDown(KeyCode.Space))
+            {
+                pauseSimulation = !pauseSimulation;
+            }
         }  
         
         void InitializeSimulation()  
@@ -166,6 +179,8 @@ namespace ConsequenceCascade.Behaviours
             computeShader.SetFloat("iterations", layers[layerIndex].iterations);
             computeShader.SetFloat("density", density);
             computeShader.SetFloat("damping", damping);
+            computeShader.SetFloat("siderealOffset", siderealOffset);
+            computeShader.SetFloat("precessionalOffset", precessionalOffset);
         }  
         
         public void ResetAllFields()  
